@@ -15,6 +15,7 @@ from zope.component import getUtility
 
 from plone.app.multilingual import _
 from plone.app.multilingual.browser.interfaces import ICreateTranslation
+from plone.app.multilingual.browser.interfaces import ICreateInSiteTranslation
 from plone.app.multilingual.interfaces import IMultiLanguageExtraOptionsSchema
 
 
@@ -116,3 +117,21 @@ class TranslationForm(form.SchemaForm):
                 return self.request.response.redirect(
                     translated.absolute_url() + '/edit?set_language=%s' %
                     language)
+
+
+class InSiteTranslationForm(form.SchemaForm):
+    grok.name('create_translation_in_site')
+    grok.context(ITranslatable)
+    grok.require('plone.app.multilingual.ManageTranslations')
+    schema = ICreateInSiteTranslation
+    ignoreContext = True
+    
+    @button.buttonAndHandler(_(u'Select'))
+    def handle_create(self, action):
+        data, errors = self.extractData()
+        if not errors:
+            import pdb; pdb.set_trace()
+            placeholder = data.get('placeholder')
+            lang_id = data.get('language')
+            
+

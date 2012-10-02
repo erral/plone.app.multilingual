@@ -34,6 +34,23 @@ class ICreateTranslation(interface.Interface):
     )
 
 
+class ICreateInSiteTranslation(form.Schema):
+
+    language = schema.Choice(
+        title=_(u"title_language", default=u"Language"),
+        source=untranslated_languages,
+    )
+
+    form.widget(placeholder='plone.formwidget.contenttree.ContentTreeFieldWidget')
+    placeholder = schema.Choice(
+        title=_(u"title_placeholder", default=u"Select where do you want to store"
+                                                "this translation"),
+        required=True,
+        source=ObjPathSourceBinder({'is_folderish': True},
+                                    default_query='path:'),
+        )
+
+
 class IAddTranslation(form.Schema):
 
     language = schema.Choice(

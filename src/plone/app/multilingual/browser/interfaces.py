@@ -34,7 +34,6 @@ class ICreateTranslation(interface.Interface):
     )
 
 
-<<<<<<< HEAD
 class ICreateInSiteTranslation(form.Schema):
 
     language = schema.Choice(
@@ -50,7 +49,8 @@ class ICreateInSiteTranslation(form.Schema):
         source=ObjPathSourceBinder({'is_folderish': True},
                                     default_query='path:'),
         )
-=======
+
+
 class IUpdateLanguage(form.Schema):
 
     language = schema.Choice(
@@ -60,7 +60,7 @@ class IUpdateLanguage(form.Schema):
         source=untranslated_languages,
         required=True,
     )
->>>>>>> master
+
 
 
 class IAddTranslation(form.Schema):

@@ -34,6 +34,7 @@ class ICreateTranslation(interface.Interface):
     )
 
 
+<<<<<<< HEAD
 class ICreateInSiteTranslation(form.Schema):
 
     language = schema.Choice(
@@ -49,6 +50,17 @@ class ICreateInSiteTranslation(form.Schema):
         source=ObjPathSourceBinder({'is_folderish': True},
                                     default_query='path:'),
         )
+=======
+class IUpdateLanguage(form.Schema):
+
+    language = schema.Choice(
+        title=_(u"title_language", default=u"Available languages"),
+        description=_(u"description_update_language",
+            default=u"Untranslated languages from the current content"),
+        source=untranslated_languages,
+        required=True,
+    )
+>>>>>>> master
 
 
 class IAddTranslation(form.Schema):
@@ -77,5 +89,6 @@ class IRemoveTranslation(form.Schema):
     )
     form.widget(languages='z3c.form.browser.select.SelectFieldWidget')
 
+interface.alsoProvides(IUpdateLanguage, form.IFormFieldProvider)
 interface.alsoProvides(IAddTranslation, form.IFormFieldProvider)
 interface.alsoProvides(IRemoveTranslation, form.IFormFieldProvider)

@@ -51,6 +51,38 @@
     layer="..interfaces.IPloneAppMultilingualInstalled"
     />
 
+  <!-- Notices Viewlets -->
+  <browser:viewlet
+      name="plone.app.multilingual.supported-languages-notice"
+      for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+      view="plone.app.controlpanel.interfaces.IPloneControlPanelView"
+      manager="plone.app.layout.viewlets.interfaces.IAboveContent"
+      class=".viewlets.oneLanguageConfiguredNoticeViewlet"
+      template="templates/languages-notice.pt"
+      layer="..interfaces.IPloneAppMultilingualInstalled"
+      permission="cmf.ManagePortal"
+      />
+
+  <!-- Universal Link -->
+
+  <browser:page
+    name="multilingual-universal-link"
+    for="Products.CMFPlone.interfaces.IPloneSiteRoot"
+    class=".helper_views.universal_link"
+    permission="zope.Public"
+    layer="..interfaces.IPloneAppMultilingualInstalled"
+    />
+
+  <!-- Not Translated Yet -->
+
+  <browser:page
+    name="not_translated_yet"
+    for="plone.multilingual.interfaces.ITranslatable"
+    class=".helper_views.not_translated_yet"
+    permission="zope.Public"
+    layer="..interfaces.IPloneAppMultilingualInstalled"
+    />
+
   <!-- Multilingual Map ajax helper -->
 
   <browser:page
@@ -60,11 +92,12 @@
     permission="plone.app.controlpanel.Language"
     layer="..interfaces.IPloneAppMultilingualInstalled"
     />
-    
+
 
   <adapter factory=".controlpanel.MultiLanguageControlPanelAdapter" />
   <adapter factory=".controlpanel.MultiLanguageOptionsControlPanelAdapter" />
   <adapter factory=".controlpanel.MultiLanguageExtraOptionsAdapter" />
+  <adapter factory=".controlpanel.MultiLanguagePoliciesAdapter" />
 
   <!-- Vocabulary all languages -->
   <utility
@@ -98,7 +131,6 @@
     for="plone.multilingual.interfaces.ITranslatable"
     layer="..interfaces.IPloneAppMultilingualInstalled"
     />
-
 
   <!-- Resource Directories -->
 

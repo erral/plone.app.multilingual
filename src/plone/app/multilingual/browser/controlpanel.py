@@ -12,6 +12,7 @@ from plone.app.form.validators import null_validator
 from plone.fieldsets.fieldsets import FormFieldsets
 
 from zope.formlib import form
+from zope.schema.vocabulary import SimpleVocabulary, SimpleTerm
 
 from plone.app.controlpanel.language import LanguageControlPanel as BasePanel
 from plone.app.controlpanel.language import LanguageControlPanelAdapter
@@ -179,6 +180,28 @@ class IMultiLanguageOptionsSchema(Interface):
         required=False,
         )
 
+selector_policies = SimpleVocabulary(
+    [SimpleTerm(value=u'closest', title=_(u'Search for closest translation in parent\'s content chain.')),
+     SimpleTerm(value=u'dialog', title=_(u'Show user dialog with information about the available translations.'))
+    ]
+)
+
+
+class IMultiLanguagePolicies(Interface):
+    """ Interface for language policies - control panel fieldset
+    """
+
+    selector_lookup_translations_policy = Choice(
+        title=_(u"heading_selector_lookup_translations_policy",
+                default=u"The policy used to determine how the lookup for available "
+                         "translations will be made by the language selector."),
+        description=_(u"description_selector_lookup_translations_policy",
+                      default=u"The default language used for the content "
+                              u"and the UI of this site."),
+        required=True,
+        vocabulary=selector_policies
+    )
+
 
 class MultiLanguageOptionsControlPanelAdapter(LanguageControlPanelAdapter):
     implementsOnly(IMultiLanguageOptionsSchema)
@@ -326,6 +349,24 @@ class MultiLanguageExtraOptionsAdapter(LanguageControlPanelAdapter):
         get_move_content_to_language_folder,
         set_move_content_to_language_folder)
 
+
+class MultiLanguagePoliciesAdapter(LanguageControlPanelAdapter):
+    implementsOnly(IMultiLanguagePolicies)
+
+    def __init__(self, context):
+        super(MultiLanguagePoliciesAdapter, self).__init__(context)
+        self.registry = getUtility(IRegistry)
+        self.settings = self.registry.forInterface(IMultiLanguagePolicies)
+
+    def get_selector_lookup_translations_policy(self):
+        return self.settings.selector_lookup_translations_policy
+
+    def set_selector_lookup_translations_policy(self, value):
+        self.settings.selector_lookup_translations_policy = value
+
+    selector_lookup_translations_policy = property(get_selector_lookup_translations_policy,
+                                                   set_selector_lookup_translations_policy)
+
 selection = FormFieldsets(IMultiLanguageSelectionSchema)
 selection.label = _(u'Site Languages')
 
@@ -335,6 +376,9 @@ options.label = _(u'Negotiation Scheme')
 extras = FormFieldsets(IMultiLanguageExtraOptionsSetupSchema)
 extras.label = _(u'Extra options')
 
+policies = FormFieldsets(IMultiLanguagePolicies)
+policies.label = _(u'Policies')
+
 
 class LanguageControlPanel(BasePanel):
     """A modified language control panel, allows selecting multiple languages.
@@ -342,7 +386,7 @@ class LanguageControlPanel(BasePanel):
 
     template = ViewPageTemplateFile('controlpanel.pt')
 
-    form_fields = FormFieldsets(selection, options, extras)
+    form_fields = FormFieldsets(selection, options, policies, extras)
 
     label = _("Multilingual Settings")
     description = _("All the configuration of P.A.M. If you want to set "
@@ -396,35 +440,35 @@ class multilingualMapViewJSON(BrowserView):
     """ Helper view to get json translations """
 
     def __call__(self):
+        """ Get the JSON information about based on a nodeId
+        """
+
+        # We get the language we are looking for
         lang = ''
+        tool = getToolByName(self.context, 'portal_languages', None)
         if 'lang' in self.request:
             lang = self.request['lang']
 
         if lang == '':
-            tool = getToolByName(self.context, 'portal_languages', None)
             lang = tool.getDefaultLanguage()
 
+        # We want all or just the missing translations elements
         if 'all' in self.request:
             get_all = (self.request['all'] == 'true')
         else:
             get_all = True
 
+        # Which is the root nodeId
+        folder_path = ''
         if 'nodeId' in self.request:
             # We get the used UUID
             nodeId = (self.request['nodeId'])
-            if (nodeId == 'root'):
-                root = getToolByName(self.context, 'portal_url')
-                root = root.getPortalObject()
-                folder_path = '/'.join(root.getPhysicalPath())
-            else:
+            if (nodeId != 'root'):
                 new_root = uuidToObject(nodeId)
                 if ILanguage(new_root).get_language() == lang:
                     folder_path = '/'.join(new_root.getPhysicalPath())
-                else:
-                    root = getToolByName(self.context, 'portal_url')
-                    root = root.getPortalObject()
-                    folder_path = '/'.join(root.getPhysicalPath())
-        else:
+        if folder_path == '':
+            # We get the root folder
             root = getToolByName(self.context, 'portal_url')
             root = root.getPortalObject()
             folder_path = '/'.join(root.getPhysicalPath())
@@ -438,10 +482,28 @@ class multilingualMapViewJSON(BrowserView):
         query['Language'] = lang
         search_results = pcatalog.searchResults(query)
         resultat = {'id': 'root', 'name': folder_path, 'data': {}, 'children': []}
+        # Get the canonicals
+        storage = getUtility(IMultilingualStorage)
+        canonicals = storage.get_canonicals()
+        supported_languages = tool.getSupportedLanguages()
         for sr in search_results:
-            # we get the trasnaltion information
-
-            resultat['children'].append({'id': sr['UID'], 'name': sr['Title'], 'data': {}, 'children': []})
+            # We want to know the translated and missing elements
+            translations = {}
+            if sr['UID'] in canonicals:
+                # We look for the brain for each translation
+                canonical = canonicals[sr['UID']]
+                for lang in supported_languages:
+                    if lang in canonical.get_keys():
+                        translated_obj = uuidToObject(canonical.get_item(lang))
+                        translations[lang] = {'url': translated_obj.absolute_url(), 'title': translated_obj.getId()}
+                    else:
+                        url_to_create = sr.getURL() + "/@@create_translation?form.widgets.language"\
+                            "=%s&form.buttons.create=1" % lang
+                        translations[lang] = {'url': url_to_create, 'title': _(u'Not translated')}
+            if get_all:
+                resultat['children'].append({'id': sr['UID'], 'name': sr['Title'], 'data': translations, 'children': []})
+            else:
+                pass
         return json.dumps(resultat)
 
 
@@ -451,12 +513,14 @@ class multilingualMapView(BrowserView):
 
     def languages(self):
         langs = getUtility(IVocabularyFactory, name=u"plone.app.multilingual.vocabularies.AllAvailableLanguageVocabulary")
-        return langs(self.context)
+        tool = getToolByName(self.context, 'portal_languages', None)
+        lang = tool.getDefaultLanguage()
+        return {'default': lang, 'languages': langs(self.context)}
 
     def canonicals(self):
         """ We get all the canonicals and see which translations are missing """
         # Get the language
-        tool = getUtility(self.context, 'portal_languages', None)
+        tool = getToolByName(self.context, 'portal_languages', None)
         languages = tool.getSupportedLanguages()
         num_lang = len(languages)
         # Get the canonicals

@@ -1,3 +1,4 @@
+from plone.registry.interfaces import IRegistry
 from zope.interface import implements
 from zope.component import getMultiAdapter
 from zope.component import getUtility
@@ -18,7 +19,7 @@ from plone.uuid.interfaces import IUUID
 from plone.multilingual.interfaces import LANGUAGE_INDEPENDENT, ILanguage
 from plone.app.multilingual.interfaces import SHARED_NAME
 from plone.app.multilingual.interfaces import IPloneAppMultilingualInstalled
-
+from plone.app.multilingual.browser.controlpanel import IMultiLanguagePolicies
 
 class TranslateMenu(BrowserMenu):
     implements(ITranslateMenu)
@@ -31,6 +32,10 @@ class TranslateMenu(BrowserMenu):
         portal_state = getMultiAdapter((context, request), name=u'plone_portal_state')
         portal_url = portal_state.portal_url()
         showflags = lt.showFlags()
+
+        registry = getUtility(IRegistry)
+        settings = registry.forInterface(IMultiLanguagePolicies)
+
         # In case is neutral language show set language menu only
         if LANGUAGE_INDEPENDENT != ILanguage(context).get_language():
             context_id = IUUID(context)
@@ -39,12 +44,15 @@ class TranslateMenu(BrowserMenu):
                 lang_name = lang.title
                 lang_id = lang.value
                 icon = showflags and lt.getFlagForLanguageCode(lang_id) or None
+                
+                base_url = settings.selector_save_translations_policy == 'closest' \
+                            and 'create_translation' or 'create_translation_in_site'
                 item = {
                     "title": _(u"Create") + " " + lang_name,
                     "description": _(u"description_translate_into",
                                     default=u"Translate into ${lang_name}",
                                     mapping={"lang_name": lang_name}),
-                    "action": url + "/@@create_translation_in_site?form.widgets.language"\
+                    "action": url + "/"+ base_url + "?form.widgets.language"\
                             "=%s&form.buttons.create=1" % lang_id,
                     "selected": False,
                     "icon": icon,

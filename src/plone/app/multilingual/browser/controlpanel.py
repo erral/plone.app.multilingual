@@ -187,6 +187,12 @@ selector_policies = SimpleVocabulary(
 )
 
 
+translation_save_policies = SimpleVocabulary(
+    [SimpleTerm(value=u'closest', title=_(u'Save in the closest translation in parent\'s content chain.')),
+     SimpleTerm(value=u'dialog', title=_(u'Show user dialog to choose where to save the translation.'))
+    ]
+)
+
 class IMultiLanguagePolicies(Interface):
     """ Interface for language policies - control panel fieldset
     """
@@ -201,6 +207,14 @@ class IMultiLanguagePolicies(Interface):
         required=True,
         vocabulary=selector_policies
     )
+
+    selector_save_translations_policy = Choice(
+        title=_(u"heading_selector_save_translations_policy",
+                default=u"The policy used to determine where to save the translations "
+                         "of a content item."),
+        required=True,
+        vocabulary=translation_save_policies,
+        )
 
 
 class MultiLanguageOptionsControlPanelAdapter(LanguageControlPanelAdapter):
@@ -366,6 +380,17 @@ class MultiLanguagePoliciesAdapter(LanguageControlPanelAdapter):
 
     selector_lookup_translations_policy = property(get_selector_lookup_translations_policy,
                                                    set_selector_lookup_translations_policy)
+
+
+    def get_selector_save_translations_policy(self):
+        return self.settings.selector_save_translations_policy
+
+    def set_selector_save_translations_policy(self, value):
+        self.settings.selector_save_translations_policy = value
+
+    selector_save_translations_policy = property(get_selector_save_translations_policy,
+                                                 set_selector_save_translations_policy)
+
 
 selection = FormFieldsets(IMultiLanguageSelectionSchema)
 selection.label = _(u'Site Languages')

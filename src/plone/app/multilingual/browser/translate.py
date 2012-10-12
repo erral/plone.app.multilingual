@@ -1,3 +1,4 @@
+from zope.event import notify
 import urllib
 
 from Acquisition import aq_inner
@@ -9,6 +10,15 @@ from plone.multilingual.interfaces import ILanguage
 from plone.multilingual.interfaces import ITranslatable
 from plone.multilingual.interfaces import ITranslationManager
 from plone.multilingual.interfaces import LANGUAGE_INDEPENDENT
+from plone.multilingual.events import (
+    ObjectWillBeTranslatedEvent,
+    ObjectTranslatedEvent,
+)
+from plone.multilingual.interfaces import (    
+    ITranslationCloner,
+    ITranslationIdChooser,
+    )
+
 from plone.registry.interfaces import IRegistry
 from z3c.form import button
 from zope.component import getUtility
@@ -129,9 +139,34 @@ class InSiteTranslationForm(form.SchemaForm):
     @button.buttonAndHandler(_(u'Select'))
     def handle_create(self, action):
         data, errors = self.extractData()
-        if not errors:
-            import pdb; pdb.set_trace()
+        if not errors:            
             placeholder = data.get('placeholder')
-            lang_id = data.get('language')
-            
+            language = data.get('language')
+            # XXX: mimic what ITranslationFactory and Manager do
+            notify(ObjectWillBeTranslatedEvent(self.context, language))
 
+            name_chooser = ITranslationIdChooser(self.context)
+            content_id = name_chooser(placeholder, language)
+            content_type = self.context.portal_type
+            new_id = placeholder.invokeFactory(type_name=content_type,
+                                               id=content_id,
+                                               language=language)
+            translated = getattr(placeholder, new_id)
+            cloner = ITranslationCloner(self.context)
+            cloner(translated)
+            ILanguage(translated).set_language(language)
+            translated.reindexObject()
+            manager = ITranslationManager(aq_inner(self.context))
+            translated_id = manager.get_id(translated)
+            manager.register_translation(language, translated_id)
+            notify(ObjectTranslatedEvent(self.context, translated, language))
+
+            registry = getUtility(IRegistry)
+            settings = registry.forInterface(IMultiLanguageExtraOptionsSchema)
+            if settings.redirect_babel_view:
+                return self.request.response.redirect(
+                    translated.absolute_url() + '/babel_edit')
+            else:
+                return self.request.response.redirect(
+                    translated.absolute_url() + '/edit?set_language=%s' %
+                    language)

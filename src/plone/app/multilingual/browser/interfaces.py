@@ -8,6 +8,7 @@ from plone.app.multilingual.browser.vocabularies import (
     deletable_languages,
 )
 from plone.formwidget.contenttree import ObjPathSourceBinder
+from plone.app.multilingual.browser.source import RootObjPathSourceBinder
 from plone.directives import form
 from z3c.relationfield.schema import RelationChoice
 
@@ -46,7 +47,8 @@ class ICreateInSiteTranslation(form.Schema):
         title=_(u"title_placeholder", default=u"Select where do you want to store"
                                                 "this translation"),
         required=True,
-        source=ObjPathSourceBinder({'is_folderish': True},
+        source=RootObjPathSourceBinder({'is_folderish': True,
+                                        'Language': 'All'},
                                     default_query='path:'),
         )
 

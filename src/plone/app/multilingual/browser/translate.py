@@ -1,15 +1,13 @@
-import json
-
 from Acquisition import aq_inner
 from plone.app.multilingual import _
-from plone.app.multilingual.interfaces import (
-    IExternalTranslationService,
-    ITranslationManager,
-)
+from plone.app.multilingual.interfaces import IExternalTranslationService
+from plone.app.multilingual.interfaces import ITranslationManager
 from plone.base.interfaces import ILanguage
 from plone.uuid.interfaces import IUUID
 from Products.Five import BrowserView
 from zope.component import getAdapters
+
+import json
 
 
 class gtranslation_service_dexterity(BrowserView):
